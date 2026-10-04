@@ -1,3 +1,19 @@
+# Local Hindsight + LongMemEval developer pilot
+
+Start with [the two-hour developer task](docs/LOCAL_PILOT.md): one setup command,
+then one command that starts Hindsight, verifies isolation and runs a complete
+original LongMemEval-S case. Hindsight runs from Henry's pinned fork; AMB uses
+its HTTP provider in a separate environment. The guide explains what to inspect
+and submit, the model/cost limits, and the narrow claim supported by one case.
+
+This fork adds lightweight installation and adapter correctness fixes to upstream
+AMB `f618ed7b1f0eb9cad7b42e876f91a42f0eadb150`. Other backends now require the
+`all` extra (`uv sync --extra all`). The pilot's setup script installs frozen
+dependencies and the `hindsight-http` extra. It does not alter the stock AMB judge;
+the pilot also runs the pinned official scoring prompt with Gemini.
+
+---
+
 # AMB — Agent Memory Benchmark
 
 We built AMB because we wanted to be honest about how Hindsight performs — and because no existing benchmark gave us the full picture. AMB is fully open: datasets, prompts, scoring logic, and results.

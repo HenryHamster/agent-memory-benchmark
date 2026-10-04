@@ -24,6 +24,7 @@ Categories (query-level, by question_type):
   knowledge-update           single-session-preference
 """
 import json
+import re
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -100,7 +101,7 @@ class LongMemEvalDataset(Dataset):
             return None
         try:
             # Strip day-of-week: "2023/05/20 (Sat) 02:21" → "2023/05/20 02:21"
-            cleaned = date_str.split("(")[0].strip() if "(" in date_str else date_str
+            cleaned = re.sub(r"\s*\([^)]*\)\s*", " ", date_str).strip()
             for fmt in ["%Y/%m/%d %H:%M", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%Y/%m/%d"]:
                 try:
                     return datetime.strptime(cleaned, fmt).replace(tzinfo=timezone.utc)
@@ -281,7 +282,7 @@ If it's correct, set correct=true."""
 
             # Gold sessions = sessions containing at least one turn with has_answer=True
             sessions    = item.get("haystack_sessions", [])
-            session_ids = item.get("haystack_session_ids", [])
+            session_ids = self._unique_session_ids(item.get("haystack_session_ids", []))
             gold_ids = [
                 f"{question_id}_{sid}"
                 for sid, turns in zip(session_ids, sessions)
@@ -319,7 +320,7 @@ If it's correct, set correct=true."""
 
             sessions = item.get("haystack_sessions", [])
             dates = item.get("haystack_dates", [])
-            session_ids = item.get("haystack_session_ids", [])
+            session_ids = self._unique_session_ids(item.get("haystack_session_ids", []))
 
             # Align lengths
             min_len = min(len(sessions), len(dates), len(session_ids))
@@ -371,3 +372,16 @@ If it's correct, set correct=true."""
         for cat in _QUESTION_TYPES:
             table.add_row(f"  {cat}", str(cat_counts.get(cat, 0)))
         console.print(table)
+
+    @staticmethod
+    def _unique_session_ids(session_ids: list[str]) -> list[str]:
+        """Preserve repeated history sessions instead of provider-side deduplication."""
+        counts: dict[str, int] = {}
+        result = []
+        for sid in session_ids:
+            occurrence = counts.get(sid, 0)
+            counts[sid] = occurrence + 1
+            result.append(sid if occurrence == 0 else f"{sid}__occurrence_{occurrence}")
+        if len(set(result)) != len(result):
+            raise ValueError("LongMemEval session ID disambiguation collision")
+        return result

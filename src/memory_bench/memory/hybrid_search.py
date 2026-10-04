@@ -1,9 +1,8 @@
+from __future__ import annotations
+
 import tempfile
 import uuid
 from pathlib import Path
-
-from qdrant_client import QdrantClient, models
-from sentence_transformers import SentenceTransformer
 
 from ..models import Document
 from ..utils import chunk_text
@@ -34,6 +33,8 @@ class HybridSearchMemoryProvider(MemoryProvider):
         self._sparse_model = None
 
     def prepare(self, store_dir: Path, unit_ids: set[str] | None = None, reset: bool = True) -> None:
+        from qdrant_client import QdrantClient
+
         qdrant_path = store_dir / "qdrant"
         qdrant_path.mkdir(parents=True, exist_ok=True)
         self._client = QdrantClient(path=str(qdrant_path))
@@ -41,6 +42,8 @@ class HybridSearchMemoryProvider(MemoryProvider):
         self._setup_collection(reset=reset)
 
     def _ensure_ready(self) -> QdrantClient:
+        from qdrant_client import QdrantClient
+
         if self._client is None:
             self._client = QdrantClient(path=tempfile.mkdtemp(prefix="qdrant_bench_"))
             self._init_models()
@@ -48,11 +51,14 @@ class HybridSearchMemoryProvider(MemoryProvider):
         return self._client
 
     def _init_models(self) -> None:
+        from sentence_transformers import SentenceTransformer
         from fastembed import SparseTextEmbedding
         self._dense_model = SentenceTransformer(_DENSE_MODEL, trust_remote_code=True, device="cpu")
         self._sparse_model = SparseTextEmbedding(model_name=_SPARSE_MODEL)
 
     def _setup_collection(self, reset: bool = True) -> None:
+        from qdrant_client import models
+
         existing = {c.name for c in self._client.get_collections().collections}
         if _COLLECTION in existing:
             if not reset:
@@ -78,12 +84,16 @@ class HybridSearchMemoryProvider(MemoryProvider):
         return self._dense_model.encode(texts, prompt_name=prompt_name, normalize_embeddings=True).tolist()
 
     def _sparse(self, texts: list[str]) -> list[models.SparseVector]:
+        from qdrant_client import models
+
         return [
             models.SparseVector(indices=e.indices.tolist(), values=e.values.tolist())
             for e in self._sparse_model.embed(texts)
         ]
 
     def ingest(self, documents: list[Document]) -> None:
+        from qdrant_client import models
+
         client = self._ensure_ready()
 
         # Expand each document into chunks
@@ -121,6 +131,8 @@ class HybridSearchMemoryProvider(MemoryProvider):
         user_id: str | None = None,
         query_timestamp: str | None = None,
     ) -> tuple[list[Document], dict | None]:
+        from qdrant_client import models
+
         client = self._ensure_ready()
         dense_query = self._dense([query], is_query=True)[0]
         sparse_query = self._sparse([query])[0]

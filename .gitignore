@@ -12,3 +12,6 @@ data/tempo/
 .vercel
 .env*.local
 .env
+
+# Local pilot state, credentials, data, model requests and database handles
+.pilot/

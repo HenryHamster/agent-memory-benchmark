@@ -178,6 +178,7 @@ class _HindsightBase(MemoryProvider):
 
     def prepare(self, store_dir: Path, unit_ids: set[str] | None = None, reset: bool = True) -> None:
         self._bank_id, self._dataset, self._category = _bank_id_from_store_dir(store_dir)
+        self._bank_id = os.environ.get("AMB_BANK_PREFIX", self._bank_id)
         self._per_unit = unit_ids is not None
 
     def set_extraction_labels(self, labels: list[dict] | None) -> None:
@@ -1249,7 +1250,7 @@ class HindsightHTTPMemoryProvider(HindsightCloudMemoryProvider):
     def __init__(self):
         # Bypass HindsightCloudMemoryProvider.__init__ — no API key required.
         _HindsightBase.__init__(self)
-        from hindsight import HindsightClient
+        from hindsight_client import Hindsight as HindsightClient
         self._cloud_api_key = os.environ.get("HINDSIGHT_HTTP_KEY", "")
         self._cloud_base_url = os.environ.get("HINDSIGHT_HTTP_URL", "http://localhost:8888")
         self._client = HindsightClient(base_url=self._cloud_base_url, api_key=self._cloud_api_key)
